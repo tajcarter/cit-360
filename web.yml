@@ -13,57 +13,77 @@
     db_port: 3306
     service_dir: /usr/share/nginx/{{ service_name }}
   tasks:
-    - become: yes
+    - name: 1
+      become: yes
       lineinfile: dest=/etc/sysconfig/selinux regexp="^SELINUX=" line="SELINUX=permissive"
 
-    - become: yes
+    - name: 2
+      become: yes
       command: setenforce 0
 
-    - yum: name=epel-release update_cache=yes state=present
+    - name: 3
+      become: yes
+      yum: name=epel-release update_cache=yes state=present
 
-    - become: yes
+    - name: 4
+      become: yes
       yum: name=nginx,php,php-fpm,php-ldap,php-mbstring,php-mcrypt,php-mysql,php-phpunit-PHPUnit update_cache=yes state=present
       register: nginx_install
 
-    - become: yes
+    - name: 5
+      become: yes
       shell: curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-    - become: yes
+    - name: 6
+      become: yes
       copy: src=web/nginx.conf dest=/etc/nginx/nginx.conf mode=0000
       register: nginx_conf
-
-    - become: yes
+    - name: 7
+      become: yes
       template: src=web/vhost.conf.j2 dest=/etc/nginx/conf.d/{{ service_name }}.conf mode=0644
       register: vhost_conf
 
-    - template: src=web/php.ini.j2 dest=/etc/php.ini mode=0644
+    - name: 8
+      become: yes
+      template: src=web/php.ini.j2 dest=/etc/php.ini mode=0644
       register: php_conf
 
-    - become: yes
+    - name: 9
+      become: yes
       copy: src=web/php-fpm-web.conf dest=/etc/php-fpm.d/www.conf mode=0644
       register: php_fpm_conf
 
-    - become: yes
-      systemd: name=nginx state=restarted enabled=yes
+    - name: 10
+      become: yes
+      service: name=nginx state=restarted enabled=yes
       when: nginx_install|changed or nginx_conf|changed or vhost_conf|changed
 
-    - systemd: name=php-fpm state=restarted enabled=yes
+    - name: 11
+      become: yes
+
+      service: name=php-fpm state=restarted enabled=yes
       when: nginx_install|changed or php_conf|changed or php_fpm_conf|changed
 
-    - become: yes
-      file: path="{{ service_dir }}" state=file
+    - name: 12
+      become: yes
+      file: path="{{ service_dir }}" state=directory
 
-    - become: yes
+    - name: 13
+      become: yes
       unarchive: src=web/{{ service_name }}.tgz dest="{{ service_dir }}" mode=0755
 
-    - become: yes
+    - name: 14
+      become: yes
       command: /usr/local/bin/composer update chdir={{ service_dir }}
 
-    - become: yes
+    - name: 15
+      become: yes
       command: chmod -R 0777 storage chdir="{{ service_dir }}"
+      #solution change to root
+    - name: 15
+      become: yes
+      command: chown -R nginx:nginx . chdir="{{ service_dir }}"
 
-    - command: chown -R nginx:nginx . chdir="{{ service_dir }}"
-
-    - become: yes
+    - name: 16
+      become: yes
       template: src=web/env.j2 dest="{{ service_dir }}/.env" mode=0644 owner=nginx
-
