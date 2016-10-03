@@ -36,7 +36,7 @@
 
     - name: 6
       become: yes
-      copy: src=web/nginx.conf dest=/etc/nginx/nginx.conf mode=0000
+      copy: src=web/nginx.conf dest=/etc/nginx/nginx.conf mode=0640
       register: nginx_conf
     - name: 7
       become: yes
@@ -67,7 +67,6 @@
     - name: 12
       become: yes
       file: path="{{ service_dir }}" state=directory
-
     - name: 13
       become: yes
       unarchive: src=web/{{ service_name }}.tgz dest="{{ service_dir }}" mode=0755
@@ -80,10 +79,11 @@
       become: yes
       command: chmod -R 0777 storage chdir="{{ service_dir }}"
       #solution change to root
-    - name: 15
-      become: yes
-      command: chown -R nginx:nginx . chdir="{{ service_dir }}"
-
     - name: 16
       become: yes
+      command: chown -R nginx:nginx . chdir="{{ service_dir }}"
+     
+    - name: 17
+      become: yes
       template: src=web/env.j2 dest="{{ service_dir }}/.env" mode=0644 owner=nginx
+
