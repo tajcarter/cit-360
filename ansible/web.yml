@@ -7,19 +7,20 @@
     service_version: 1.0
     app_key: QujjaJs3fxwtnTl7FiqhEEn1ACkf7YZW
     app_env: test
-    db_host: localhost
+    db_host: weeb-man.ckf7cxro7bkn.us-west-2.rds.amazonaws.com:3306
     db_database: curriculum
     db_username: curriculum
     db_port: 3306
     service_dir: /usr/share/nginx/{{ service_name }}
+    ansible_ssh_private_key_file: ~/.ssh/cit360.pem
   tasks:
-    - name: 1
-      become: yes
-      lineinfile: dest=/etc/sysconfig/selinux regexp="^SELINUX=" line="SELINUX=permissive"
+#    - name: 1
+#      become: yes
+#      lineinfile: dest=/etc/sysconfig/selinux regexp="^SELINUX=" line="SELINUX=permissive"
 
-    - name: 2
-      become: yes
-      command: setenforce 0
+#    - name: 2
+#      become: yes
+#      command: setenforce 0
 
     - name: 3
       become: yes
@@ -67,6 +68,7 @@
     - name: 12
       become: yes
       file: path="{{ service_dir }}" state=directory
+
     - name: 13
       become: yes
       unarchive: src=web/{{ service_name }}.tgz dest="{{ service_dir }}" mode=0755
@@ -82,7 +84,7 @@
     - name: 16
       become: yes
       command: chown -R nginx:nginx . chdir="{{ service_dir }}"
-     
+
     - name: 17
       become: yes
       template: src=web/env.j2 dest="{{ service_dir }}/.env" mode=0644 owner=nginx
