@@ -1,398 +1,333 @@
-# Add your VPC ID to default below
+# add your VPC ID to default below and initialize variables
+
 variable "vpc_id" {
   description = "VPC ID for usage throughout the build process"
   default = "vpc-ed8a7b8a"
 }
 
-#region 
+variable "db_username" {
+  description = "Username for DB"
+  default = "root"
+}
+
+variable "db_password" {}
+
 provider "aws" {
   region = "us-west-2"
 }
 
-#creates internet gateway
+#Create Internet Gateway
+
 resource "aws_internet_gateway" "gw" {
   vpc_id = "${var.vpc_id}"
 
-  tags  {
+  tags = {
     Name = "default_ig"
   }
 }
 
-#this will create the IP and assign it to the NAT Gateway
-resource "aws_eip" "lb"{
-	vpc = true 
-	depends_on = ["aws_internet_gateway.gw"]
+#Create Elastic IP
+
+resource "aws_eip" "tuto_eip" {
+  vpc = true
+  depends_on = ["aws_internet_gateway.gw"]
 }
 
-#aws NAT Gateway
-resource "aws_nat_gateway" "nat" {
-	allocation_id = "${aws_eip.lb.id}"
-	subnet_id = "${aws_subnet.public_subnet_a.id}"
-	
-	depends_on = ["aws_internet_gateway.gw"]
+#Create NAT gateway
+
+resource "aws_nat_gateway" "gw" {
+  allocation_id = "${aws_eip.tuto_eip.id}"
+  subnet_id = "${aws_subnet.public_subnet_a.id}"
+  depends_on = ["aws_internet_gateway.gw"]
 }
+#Public Routing Table
 
-
-#_________________________________________________________________________________________________
-#aws public route table
-resource "aws_route_table" "public_route_table" {
+resource "aws_route_table" "public_routing_table" {
   vpc_id = "${var.vpc_id}"
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = "${aws_internet_gateway.gw.id}"
   }
+
+  tags {
+    Name = "public_routing_table"
+  }
 }
 
-#creates public subnets
+#Public Subnets
+
 resource "aws_subnet" "public_subnet_a" {
-    vpc_id = "${var.vpc_id}"
-    cidr_block = "172.31.0.0/24"
-    availability_zone = "us-west-2a"
+  vpc_id = "${var.vpc_id}"
+  cidr_block = "172.31.1.0/24"
+  availability_zone = "us-west-2a"
 
-    tags {
-        Name = "public_a"
-    }
+  tags {
+    Name = "public_a"
+  }
 }
- 
- 
-#
-#associate subnet public_subnet to public route table
 
-resource "aws_route_table_association" "public_subnet_a" {
-    subnet_id = "${aws_subnet.public_subnet_a.id}"
-    route_table_id = "${aws_route_table.public_route_table.id}"
-	
-}
-#-----------------------------------------------
-
-#creates public subnets
 resource "aws_subnet" "public_subnet_b" {
-    vpc_id = "${var.vpc_id}"
-    cidr_block = "172.31.1.0/24"
-    availability_zone = "us-west-2b"
+  vpc_id = "${var.vpc_id}"
+  cidr_block = "172.31.2.0/24"
+  availability_zone = "us-west-2b"
 
-    tags {
-        Name = "public_b"
-    }
-}
-  
-#
-#associate subnet public_subnet to public route table
-
-resource "aws_route_table_association" "public_subnet_b" {
-    subnet_id = "${aws_subnet.public_subnet_b.id}"
-    route_table_id = "${aws_route_table.public_route_table.id}"
-	
+  tags {
+    Name = "public_b"
+  }
 }
 
-#-----------------------------------------------
-
-#creates public subnets
 resource "aws_subnet" "public_subnet_c" {
-    vpc_id = "${var.vpc_id}"
-    cidr_block = "172.31.2.0/24"
-    availability_zone = "us-west-2c"
+  vpc_id = "${var.vpc_id}"
+  cidr_block = "172.31.3.0/24"
+  availability_zone = "us-west-2c"
 
-    tags {
-        Name = "public_c"
-    }
+  tags {
+    Name = "public_c"
+  }
 }
-  
-#
-#associate subnet public_subnet to public route table
+#Public Routing Table Associations
 
-resource "aws_route_table_association" "public_subnet_c" {
-    subnet_id = "${aws_subnet.public_subnet_c.id}"
-    route_table_id = "${aws_route_table.public_route_table.id}"
-	
+resource "aws_route_table_association" "public_subnet_a_rt_assoc" {
+  subnet_id = "${aws_subnet.public_subnet_a.id}"
+  route_table_id = "${aws_route_table.public_routing_table.id}"
 }
 
-
-
-#_________________________________________________________________________________________________
-#creates the private route table
-resource "aws_route_table" "private_route_table" {
-	vpc_id = "${var.vpc_id}"
-	route {
-		cidr_block = "0.0.0.0/0"
-		nat_gateway_id = "${aws_nat_gateway.nat.id}"
-	}	
-	tags {
-		Name = "private_route_table"
-	}
+resource "aws_route_table_association" "public_subnet_b_rt_assoc" {
+  subnet_id = "${aws_subnet.public_subnet_b.id}"
+  route_table_id = "${aws_route_table.public_routing_table.id}"
 }
 
-/*
-resource "aws_route" "private_route" {
-	route_table_id = "${aws_route_table.private_route_table.id}"
-	destination_cidr_block = "0.0.0.0/0"
-	nat_gateway_id = "${aws_nat_gateway.nat.id}"
-
+resource "aws_route_table_association" "public_subnet_c_rt_assoc" {
+  subnet_id = "${aws_subnet.public_subnet_c.id}"
+  route_table_id = "${aws_route_table.public_routing_table.id}"
 }
-*/
- 
-#creates private subnets
+
+#Private Routing Table
+
+resource "aws_route_table" "private_routing_table" {
+  vpc_id = "${var.vpc_id}"
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = "${aws_nat_gateway.gw.id}"
+  }
+  tags {
+    Name = "private_routing_table"
+  }
+}
+
+#Private Subnets
+
 resource "aws_subnet" "private_subnet_a" {
-        vpc_id = "${var.vpc_id}"
-        cidr_block = "172.31.8.0/22"    
-        availability_zone = "us-west-2a"
-        tags = {
-                Name = "private_a"
-        }
+  vpc_id = "${var.vpc_id}"
+  cidr_block = "172.31.4.0/22"
+  availability_zone = "us-west-2a"
+
+  tags {
+    Name = "private_a"
+  }
 }
 
-
- 
-#associate subnet private_subnet to private route table
-
-resource "aws_route_table_association" "private_subnet_a" {
-    subnet_id = "${aws_subnet.private_subnet_a.id}"
-    route_table_id = "${aws_route_table.private_route_table.id}"
-}
- 
-
-#-------------------------------------------
-
-#creates private subnets 
 resource "aws_subnet" "private_subnet_b" {
-	vpc_id = "${var.vpc_id}"
-	cidr_block = "172.31.4.0/22"
-	availability_zone = "us-west-2b"
-	tags = {
-		Name = "private_b"
-	}
+  vpc_id = "${var.vpc_id}"
+  cidr_block = "172.31.8.0/22"
+  availability_zone = "us-west-2b"
+
+  tags {
+    Name = "private_b"
+  }
 }
 
- 
-#associate subnet private_subnet to private route table
-
-resource "aws_route_table_association" "private_subnet_b" {
-    subnet_id = "${aws_subnet.private_subnet_b.id}"
-    route_table_id = "${aws_route_table.private_route_table.id}"
-}
-
-#-------------------------------------------
-
-#creates private subnets 
 resource "aws_subnet" "private_subnet_c" {
-	vpc_id = "${var.vpc_id}"
-	cidr_block = "172.31.12.0/22"
-	availability_zone = "us-west-2c"
-	tags = {
-		Name = "private_c"
-	}
+  vpc_id = "${var.vpc_id}"
+  cidr_block = "172.31.12.0/22"
+  availability_zone = "us-west-2c"
+
+  tags {
+    Name = "private_c"
+  }
 }
 
- 
-#associate subnet private_subnet to private route table
+#Private Routing Table Associations
 
-resource "aws_route_table_association" "private_subnet_c" {
-    subnet_id = "${aws_subnet.private_subnet_c.id}"
-    route_table_id = "${aws_route_table.private_route_table.id}"
+resource "aws_route_table_association" "private_subnet_a_rt_assoc" {
+  subnet_id = "${aws_subnet.private_subnet_a.id}"
+  route_table_id = "${aws_route_table.private_routing_table.id}"
 }
 
-
-# Bastion instance
-resource "aws_instance" "bastion" {
-    ami = "ami-5ec1673e"
-    associate_public_ip_address = true
-    subnet_id = "${aws_subnet.public_subnet_a.id}"
-    instance_type = "t2.micro"
-    key_name = "${var.aws_key_name}"
-    security_groups = ["${aws_security_group.bastion.id}"]
-    tags {
-        Name = "Bastion"
-    }
+resource "aws_route_table_association" "private_subnet_b_rt_assoc" {
+  subnet_id = "${aws_subnet.private_subnet_b.id}"
+  route_table_id = "${aws_route_table.private_routing_table.id}"
 }
 
-
-#security group for Bastion instance
-
-resource "aws_security_group" "bastion" {
-	name = "bastion"
-	description = "Allow access from your current public IP address to an instance on port 22 (SSH)"
-	ingress {
-		from_port = 22
-		to_port = 22
-		protocol = "tcp"
-		cidr_blocks = ["0.0.0.0/0"]
-	}
-	egress {
-		from_port = 0
-		to_port = 0
-		protocol = "-1"
-		cidr_blocks = ["0.0.0.0/0"]
-	}
-	
-	vpc_id = "${var.vpc_id}"
+resource "aws_route_table_association" "private_subnet_c_rt_assoc" {
+  subnet_id = "${aws_subnet.private_subnet_c.id}"
+  route_table_id = "${aws_route_table.private_routing_table.id}"
 }
 
-#__________________________________________________________________________________
-#new code for assignment 3 : assignment 2 code above also edited 
-#__________________________________________________________________________________
+#Security Group Rules
 
-#security group for DB
+resource "aws_security_group" "nat" {
+  vpc_id = "${var.vpc_id}"
 
-resource "aws_security_group" "default" {
-        name = "allow_all"
-        description = "Allow all inbound traffic"
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-        ingress {
-                from_port = 0
-                to_port = 0
-                protocol = "tcp"
-                cidr_blocks = ["172.31.0.0/16"]
-        }
-        tags {
-                name = "allow_all"
-        }
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
-#security group for the the instnace
+resource "aws_security_group" "web" {
+  vpc_id = "${var.vpc_id}"
 
-resource "aws_security_group" "allow_all" {
-        name = "access_all"
-        description = "allow all inbound traffic"
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = ["172.31.0.0/16"]
+  }
 
-        ingress {
-                from_port = 80
-                to_port = 80
-                protocol = "tcp"
-                cidr_blocks = ["172.31.0.0/16"]
-        }
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["172.31.0.0/16"]
+  }
 
-        ingress {
-                from_port = 22
-                to_port = 22
-                protocol = "tcp"
-                cidr_blocks = ["172.31.0.0/16"]
-        }
-	
-	egress {
-                from_port = -1
-                to_port = -1
-                protocol = "icmp"
-                cidr_blocks = ["0.0.0.0/0"]
-        }
-
-	egress {
-                from_port = 0
-                to_port = 0
-                protocol = "-1"
-                cidr_blocks = ["0.0.0.0/0"]
-        }
-
-        vpc_id = "${var.vpc_id}"
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
-
-
-#security group for ELB
 
 resource "aws_security_group" "elb" {
-        name = "elb"
-        description = "allow access from anywhere to an instance on port 80 (http)"
+  vpc_id = "${var.vpc_id}"
 
-        ingress {
-                from_port = 80
-                to_port = 80
-                protocol = "tcp"
-                cidr_blocks = ["0.0.0.0/0"]
-        }
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
+resource "aws_security_group" "db" {
+  vpc_id = "${var.vpc_id}"
 
-#referencing the subnet group for the db
+  ingress {
+    from_port = 3306
+    to_port = 3306
+    protocol = "tcp"
+    cidr_blocks =["172.31.0.0/16"]
+  }
 
-resource "aws_db_subnet_group" "db-1" {
-        name = "main"
-        subnet_ids = ["${aws_subnet.private_subnet_a.id}", "${aws_subnet.private_subnet_b.id}"]
-        tags {
-                name = "db subnet group"
-        }
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
+#Create EC2 instances
 
-#relations database service (RDS) instance
-resource "aws_db_instance" "rds-1" {
-        allocated_storage = 5
-        engine = "mariadb"
-        engine_version = "10.0.24"
-        identifier = "weeb-man"
-        instance_class = "db.t2.micro"
-        multi_az = false
-        storage_type = "gp2"
-        username = "${var.username}"
-        password = "${var.password}"
-        vpc_security_group_ids = ["${aws_security_group.default.id}"]
-        db_subnet_group_name = "${aws_db_subnet_group.db-1.id}"
-
-        tags {
-                name = "mariadb instance"
-        }
+resource "aws_instance" "bastion" {
+  ami = "ami-5ec1673e"
+  instance_type = "t2.micro"
+  subnet_id  = "${aws_subnet.public_subnet_a.id}"
+  vpc_security_group_ids = ["${aws_security_group.nat.id}"]
+  associate_public_ip_address = "true"
+  key_name = "cit360"
 }
 
+resource "aws_instance" "web_b" {
+  ami = "ami-5ec1673e"
+  instance_type = "t2.micro"
+  subnet_id = "${aws_subnet.private_subnet_b.id}"
+  vpc_security_group_ids = ["${aws_security_group.web.id}"]
+  associate_public_ip_address = "false"
+  key_name = "cit360"
+}
 
-#elastic load balancer
+resource "aws_instance" "web_c" {
+  ami = "ami-5ec1673e"
+  instance_type = "t2.micro"
+  subnet_id = "${aws_subnet.private_subnet_c.id}"
+  vpc_security_group_ids = ["${aws_security_group.web.id}"]
+  associate_public_ip_address="false"
+  key_name = "cit360"
+}
+
+#Create DB subnet group
+
+resource "aws_db_subnet_group" "db_subnet_group" {
+  name = "main"
+  subnet_ids = ["${aws_subnet.private_subnet_a.id}", "${aws_subnet.private_subnet_b.id}"]
+}
+
+#Create MariaDB Instance
+
+resource "aws_db_instance" "default_db" {
+  allocated_storage = 5
+  engine = "mariadb"
+  engine_version = "10.0.24"
+  identifier = "weeb-man"
+  instance_class = "db.t2.micro"
+  storage_type = "gp2"
+  multi_az = "false"
+  name = "my_db"
+  username = "${var.db_username}"
+  password = "${var.db_password}"
+  db_subnet_group_name = "${aws_db_subnet_group.db_subnet_group.id}"
+  vpc_security_group_ids = ["${aws_security_group.db.id}"]
+}
+
+#Create a new load balancer
+
 resource "aws_elb" "elb" {
-        name = "elb"
+  subnets = ["${aws_subnet.public_subnet_b.id}", "${aws_subnet.public_subnet_c.id}"]
 
-        subnets = ["${aws_subnet.public_subnet_b.id}" , "${aws_subnet.public_subnet_c.id}"]
-        security_groups = ["${aws_security_group.elb.id}"]
+  listener {
+    instance_port = 80
+    instance_protocol = "http"
+    lb_port = 80
+    lb_protocol = "http"
+  }
 
-        listener {
-                instance_port = 80
-                instance_protocol = "HTTP"
-                lb_port = 80
-                lb_protocol = "HTTP"
-        }
+  health_check {
+    healthy_threshold = 2
+    unhealthy_threshold = 2
+    timeout = 5
+    target = "HTTP:80/"
+    interval = 30
+  }
 
-        health_check {
-                healthy_threshold = 2
-                unhealthy_threshold = 2
-                timeout = 5
-                target = "HTTP:80/"
-                interval = 30
-        }
+instances = ["${aws_instance.web_b.id}", "${aws_instance.web_c.id}"]
+  security_groups = ["${aws_security_group.elb.id}"]
+  connection_draining = true
+  connection_draining_timeout = 60
+  cross_zone_load_balancing = true
+  idle_timeout = 60
 
-
-        instances = ["${aws_instance.webserver_b.id}" , "${aws_instance.webserver_c.id}"]
-        cross_zone_load_balancing = true
-        idle_timeout = 400
-        connection_draining = true
-        connection_draining_timeout = 60
-
-        tags {
-                name = "terraform_elb"
-        }
+  tags {
+    Name = "myelb"
+  }
 }
 
-
-#webserver instance
-resource "aws_instance" "webserver_b" {
-        ami = "ami-5ec1673e"
-
-        subnet_id = "${aws_subnet.private_subnet_b.id}"
-        instance_type = "t2.micro"
-        key_name = "${var.aws_key_name}"
-        security_groups = ["${aws_security_group.allow_all.id}"]
-
-        tags {
-                name = "webserver_b"
-                service = "curriculum"
-        }
-}
-
-resource "aws_instance" "webserver_c" {
-        ami = "ami-5ec1673e"
-
-        subnet_id = "${aws_subnet.private_subnet_c.id}"
-        instance_type = "t2.micro"
-        key_name = "${var.aws_key_name}"
-        security_groups = ["${aws_security_group.allow_all.id}"]
-
-        tags {
-                name = "webserver_c"
-                service = "curriculum"
-        }
-}
 
