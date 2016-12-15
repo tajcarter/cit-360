@@ -30,9 +30,9 @@
     - name: Download composer
       become: yes
       get_url:
-        url: https://getcomposer.org/installer
-        dest: /usr/local/bin/composer
-        mode: 0700
+      url: https://getcomposer.org/installer
+      dest: /usr/local/bin/composer
+      mode: 0700
 
     - name: Install composer
       become: yes
@@ -72,7 +72,7 @@
       become: yes
       file: path="{{ service_dir }}" state=directory
 	
-	- name: unarchive web
+    - name: unarchive web
       become: yes
       unarchive: src=~/ansible/web/{{ service_name }}.tgz dest="{{ service_dir }}" mode=0755
           
